@@ -1,4 +1,5 @@
 import pygame
+import json
 from objects import Tetraminos, Button, draw_grid
 
 
@@ -72,123 +73,151 @@ state_btn = Button(play_img, (24,24), 150, 430)
 replay_btn  = Button(replay_img, (24,24), 195, 430)
 home_btn  = Button(home_img, (24, 24), 240, 430)
 
+### HighScore Handling ********************************************************
+
+# Função para carregar o HighScore do arquivo JSON
+def load_highscore():
+    try:
+        with open('highscore.json', 'r') as f:
+            return json.load(f)["highscore"]
+    except (FileNotFoundError, KeyError):
+        return 0
+
+# Função para salvar o HighScore no arquivo JSON
+def save_highscore(highscore):
+    with open('highscore.json', 'w') as f:
+        json.dump({"highscore": highscore}, f)
+
+# Carregar o HighScore ao iniciar o jogo
+highscore = load_highscore()
+
+### Main Game Loop ************************************************************
+
 running = True
 can_move = False
 game_started = False
 game_over = False
 score = 0
 while running:
-	win.fill(BLACK)
-	for event in pygame.event.get():
-		if event.type == pygame.QUIT:
-			running = False
-		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_LEFT and can_move:
-				tetris.move_left()
-			if event.key == pygame.K_RIGHT and can_move:
-				tetris.move_right()
-			if event.key == pygame.K_SPACE and can_move:
-				tetris.rotate_shape()
-			if event.key == pygame.K_p:
-				can_move = not can_move
+    win.fill(BLACK)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT and can_move:
+                tetris.move_left()
+            if event.key == pygame.K_RIGHT and can_move:
+                tetris.move_right()
+            if event.key == pygame.K_SPACE and can_move:
+                tetris.rotate_shape()
+            if event.key == pygame.K_p:
+                can_move = not can_move
 
-		if event.type == MOVE_DOWN and can_move:
-				tetris.move_down()
+        if event.type == MOVE_DOWN and can_move:
+                tetris.move_down()
 
-	if not game_started:
-		win.blit(tetris_img, tetris_rect)
-		if start_btn.draw(win):
-			game_started = True
-			game_over = False
-			can_move = True
-			matrix = [[0 for j in range(COLS)] for i in range(ROWS)]
-			tetris = Tetraminos(matrix)
-			tetris.create_tetramino()
-	else:
-		pygame.draw.rect(win, WHITE, (0,0, WIDTH, HEIGHT-80), 3)
-		win.blit(hud, hud_rect)
+    if not game_started:
+        win.blit(tetris_img, tetris_rect)
+        if start_btn.draw(win):
+            game_started = True
+            game_over = False
+            can_move = True
+            matrix = [[0 for j in range(COLS)] for i in range(ROWS)]
+            tetris = Tetraminos(matrix)
+            tetris.create_tetramino()
+    else:
+        pygame.draw.rect(win, WHITE, (0,0, WIDTH, HEIGHT-80), 3)
+        win.blit(hud, hud_rect)
 
-		if not game_over:
-			if tetris.is_dead:
-				matrix = [[0 for j in range(COLS)] for i in range(ROWS)]
-				game_over_sound.play()
-				can_move = False
-				game_over = True
-				
-			if tetris.on_tetris and not tetris.is_dead:
-				fall_sound.play()
-				tetris = Tetraminos(matrix)
-				tetris.draw_grid()
+        if not game_over:
+            if tetris.is_dead:
+                matrix = [[0 for j in range(COLS)] for i in range(ROWS)]
+                game_over_sound.play()
+                can_move = False
+                game_over = True
+                
+            if tetris.on_tetris and not tetris.is_dead:
+                fall_sound.play()
+                tetris = Tetraminos(matrix)
+                tetris.draw_grid()
 
-			for y in range(ROWS):
-				for x in range(COLS):
-					cell = matrix[y][x]
-					if cell != 0:
-						tile = TILES[cell]
-						rect = tile.get_rect()
-						rect.x = x * CELL
-						rect.y = y * CELL
-						win.blit(tile, rect)
-						pygame.draw.rect(win, WHITE, (x * CELL, y * CELL, CELL, CELL), 1)
+            for y in range(ROWS):
+                for x in range(COLS):
+                    cell = matrix[y][x]
+                    if cell != 0:
+                        tile = TILES[cell]
+                        rect = tile.get_rect()
+                        rect.x = x * CELL
+                        rect.y = y * CELL
+                        win.blit(tile, rect)
+                        pygame.draw.rect(win, WHITE, (x * CELL, y * CELL, CELL, CELL), 1)
 
-		
-			for y in range(ROWS-1, 0, -1):
-				is_full = True
-				for x in range(COLS):
-					if matrix[y][x] == 0:
-						is_full = False
-						break
-				if is_full:
-					can_move = False
-					score += 10
-					line_sound.play()
-					del matrix[y]
-					matrix.insert(0, [0 for i in range(COLS)])
-					can_move = True
+        
+            for y in range(ROWS-1, 0, -1):
+                is_full = True
+                for x in range(COLS):
+                    if matrix[y][x] == 0:
+                        is_full = False
+                        break
+                if is_full:
+                    can_move = False
+                    score += 10
+                    line_sound.play()
+                    del matrix[y]
+                    matrix.insert(0, [0 for i in range(COLS)])
+                    can_move = True
 
-			for x in range(COLS):
-				coll_ful = True
-				for y in range(ROWS-1):
-					if matrix[y][x] == 0:
-						coll_ful = False
-						break
-				if coll_ful:
-					game_over_sound.play()
-					can_move = False
-					game_over = True
-					matrix = [[0 for j in range(COLS)] for i in range(ROWS)]
-		else:
-			img1 = gameover_font.render('Game over', True, WHITE)
-			img2 = score_font.render(f'Score : {score}', True, WHITE)
-			win.blit(img1, (WIDTH // 2 - img1.get_width() / 2, 180))
-			win.blit(img2, (WIDTH // 2 - img2.get_width() / 2,250))
+            for x in range(COLS):
+                coll_ful = True
+                for y in range(ROWS-1):
+                    if matrix[y][x] == 0:
+                        coll_ful = False
+                        break
+                if coll_ful:
+                    game_over_sound.play()
+                    can_move = False
+                    game_over = True
+                    matrix = [[0 for j in range(COLS)] for i in range(ROWS)]
+        else:
+            img1 = gameover_font.render('Game over', True, WHITE)
+            img2 = score_font.render(f'Score : {score}', True, WHITE)
+            win.blit(img1, (WIDTH // 2 - img1.get_width() / 2, 180))
+            win.blit(img2, (WIDTH // 2 - img2.get_width() / 2,250))
 
+            # Verificar e atualizar o HighScore
+            if score > highscore:
+                highscore = score
+                save_highscore(highscore)
 
-		if can_move:
-			if state_btn.draw(win, pause_img):
-				can_move = not can_move
-		else:
-			if state_btn.draw(win, play_img):
-				can_move = not can_move
+        # Mostrar o HighScore
+        highscore_text = score_font.render(f'HighScore: {highscore}', True, WHITE)
+        win.blit(highscore_text, (40, 380))
 
-		if replay_btn.draw(win):
-			clear_sound.play()
-			matrix = [[0 for j in range(COLS)] for i in range(ROWS)]
-			tetris = Tetraminos(matrix)
-			tetris.create_tetramino()
-			game_over = False
-			can_move = True
-			score = 0
+        if can_move:
+            if state_btn.draw(win, pause_img):
+                can_move = not can_move
+        else:
+            if state_btn.draw(win, play_img):
+                can_move = not can_move
 
-		if home_btn.draw(win):
-			score = 0
-			game_started = False
-			can_move = False
+        if replay_btn.draw(win):
+            clear_sound.play()
+            matrix = [[0 for j in range(COLS)] for i in range(ROWS)]
+            tetris = Tetraminos(matrix)
+            tetris.create_tetramino()
+            game_over = False
+            can_move = True
+            score = 0
 
-		img = score_font.render(f'{score}', True, WHITE)
-		win.blit(img, (40, 420))
+        if home_btn.draw(win):
+            score = 0
+            game_started = False
+            can_move = False
 
-	pygame.display.update()
-	clock.tick(30)
+        img = score_font.render(f'{score}', True, WHITE)
+        win.blit(img, (40, 420))
+
+    pygame.display.update()
+    clock.tick(30)
 
 pygame.quit()
